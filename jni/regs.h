@@ -24,7 +24,10 @@
 
 #include <functional>
 
-#if defined(__LP64__)
+// These system calls exist, but are not exposed to the NDK.
+// grep -rnwl ndk-bundle/sysroot/usr/include/ -e "__NR_process_vm_readv"
+// grep -rnwl ndk-bundle/sysroot/usr/include/ -e "__NR_process_vm_writev"
+#if defined(__aarch64__)
 
 #define process_vm_readv(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                      \
     syscall(270, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
@@ -32,7 +35,7 @@
 #define process_vm_writev(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                     \
     syscall(271, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
 
-#else
+#elif defined(__arm__)
 
 #define process_vm_readv(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                      \
     syscall(376, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
@@ -40,9 +43,26 @@
 #define process_vm_writev(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                     \
     syscall(377, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
 
+#elif defined(__x86_64__)
+
+#define process_vm_readv(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                      \
+    syscall(310, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
+
+#define process_vm_writev(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                     \
+    syscall(311, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
+
+#elif defined(__i386__)
+
+#define process_vm_readv(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                      \
+    syscall(347, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
+
+#define process_vm_writev(pid, local_iov, liovcnt, remote_iov, riovcnt, flags)                     \
+    syscall(348, pid, local_iov, liovcnt, remote_iov, riovcnt, flags)
+
 #endif
 
-typedef struct uregs_struct {
+typedef struct uregs_struct
+{
 #if defined(__aarch64__)
     uint64_t regs[31];
     uint64_t sp;
@@ -118,33 +138,39 @@ namespace regs {
 //===----------------------------------------------------------------------===//
 #if defined(__aarch64__)
 
-uword_t read_retval(const uregs_t& regs)
+uword_t
+read_retval(const uregs_t& regs)
 {
     return regs.regs[0];
 }
 
-uword_t read_sp(const uregs_t& regs)
+uword_t
+read_sp(const uregs_t& regs)
 {
     return regs.sp;
 }
 
-uword_t read_pc(const uregs_t& regs)
+uword_t
+read_pc(const uregs_t& regs)
 {
     return regs.pc;
 }
 
-void push(uregs_t* regs, uword_t stack, writemem_t write_mem)
+void
+push(uregs_t* regs, uword_t stack, writemem_t write_mem)
 {
     regs->sp -= sizeof(uword_t);
     write_mem(reinterpret_cast<intptr_t>(&stack), read_sp(*regs), sizeof(uword_t));
 }
 
-void pop(uregs_t* regs)
+void
+pop(uregs_t* regs)
 {
     regs->sp += sizeof(uword_t);
 }
 
-void write_pc(uregs_t* regs, intptr_t address)
+void
+write_pc(uregs_t* regs, intptr_t address)
 {
     regs->pc = address;
 
@@ -156,17 +182,20 @@ void write_pc(uregs_t* regs, intptr_t address)
     }
 }
 
-void write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
+void
+write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
 {
     regs->regs[30] = address;
 }
 
-void write_syscall(uregs_t* regs, int n)
+void
+write_syscall(uregs_t* regs, int n)
 {
     regs->regs[8] = n;
 }
 
-void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
+void
+write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
 {
     for (int i = 0; i < nargs; ++i) {
         if (i < 8)
@@ -181,33 +210,39 @@ void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem
 //===----------------------------------------------------------------------===//
 #elif defined(__arm__)
 
-uword_t read_retval(const uregs_t& regs)
+uword_t
+read_retval(const uregs_t& regs)
 {
     return regs.uregs[0];
 }
 
-uword_t read_sp(const uregs_t& regs)
+uword_t
+read_sp(const uregs_t& regs)
 {
     return regs.uregs[13];
 }
 
-uword_t read_pc(const uregs_t& regs)
+uword_t
+read_pc(const uregs_t& regs)
 {
     return regs.uregs[15];
 }
 
-void push(uregs_t* regs, uword_t stack, writemem_t write_mem)
+void
+push(uregs_t* regs, uword_t stack, writemem_t write_mem)
 {
     regs->uregs[13] -= sizeof(uword_t);
     write_mem(reinterpret_cast<intptr_t>(&stack), read_sp(*regs), sizeof(uword_t));
 }
 
-void pop(uregs_t* regs)
+void
+pop(uregs_t* regs)
 {
     regs->uregs[13] += sizeof(uword_t);
 }
 
-void write_pc(uregs_t* regs, intptr_t address)
+void
+write_pc(uregs_t* regs, intptr_t address)
 {
     regs->uregs[15] = address;
 
@@ -219,17 +254,20 @@ void write_pc(uregs_t* regs, intptr_t address)
     }
 }
 
-void write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
+void
+write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
 {
     regs->uregs[14] = address;
 }
 
-void write_syscall(uregs_t* regs, int n)
+void
+write_syscall(uregs_t* regs, int n)
 {
     regs->uregs[7] = n;
 }
 
-void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
+void
+write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
 {
     for (int i = 0; i < nargs; ++i) {
         if (i < 4)
@@ -244,67 +282,85 @@ void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem
 //===----------------------------------------------------------------------===//
 #elif defined(__x86_64__)
 
-uword_t read_retval(const uregs_t& regs)
+uword_t
+read_retval(const uregs_t& regs)
 {
     return regs.rax;
 }
 
-uword_t read_sp(const uregs_t& regs)
+uword_t
+read_sp(const uregs_t& regs)
 {
     return regs.rsp;
 }
 
-uword_t read_pc(const uregs_t& regs)
+uword_t
+read_pc(const uregs_t& regs)
 {
     return regs.rip;
 }
 
-void push(uregs_t* regs, uword_t stack, writemem_t write_mem)
+void
+push(uregs_t* regs, uword_t stack, writemem_t write_mem)
 {
     regs->rsp -= sizeof(uword_t);
     write_mem(reinterpret_cast<intptr_t>(&stack), read_sp(*regs), sizeof(uword_t));
 }
 
-void pop(uregs_t* regs)
+void
+pop(uregs_t* regs)
 {
     regs->rsp += sizeof(uword_t);
 }
 
-void write_pc(uregs_t* regs, intptr_t address)
+void
+write_pc(uregs_t* regs, intptr_t address)
 {
     regs->rip = address;
 }
 
-void write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
+void
+write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
 {
     push(regs, address, write_mem);
 }
 
-void write_syscall(uregs_t* regs, int n)
+void
+write_syscall(uregs_t* regs, int n)
 {
     regs->rax = n;
 }
 
-void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
+void
+write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
 {
-    for (int i = 0; i < nargs; ++i) {
-        switch (i) {
-        case 0:
-            regs->rcx = (uword_t)va_arg(args, uword_t);
-            break;
-        case 1:
-            regs->rdx = (uword_t)va_arg(args, uword_t);
-            break;
-        case 2:
-            regs->r8 = (uword_t)va_arg(args, uword_t);
-            break;
-        case 3:
-            regs->r9 = (uword_t)va_arg(args, uword_t);
-            break;
-        default:
-            push(regs, (uword_t)va_arg(args, uword_t), write_mem);
-        }
-    }
+    if (nargs == 0)
+        return;
+
+    if (nargs-- > 0)
+        regs->rdi = (uword_t)va_arg(args, uword_t);
+
+    if (nargs-- > 0)
+        regs->rsi = (uword_t)va_arg(args, uword_t);
+
+    if (nargs-- > 0)
+        regs->rdx = (uword_t)va_arg(args, uword_t);
+
+    if (nargs-- > 0)
+        regs->rcx = (uword_t)va_arg(args, uword_t);
+
+    if (nargs-- > 0)
+        regs->r8 = (uword_t)va_arg(args, uword_t);
+
+    if (nargs-- > 0)
+        regs->r9 = (uword_t)va_arg(args, uword_t);
+
+    std::vector<uword_t> v;
+    for (size_t i = 0; i < nargs; ++i)
+        v.push_back((uword_t)va_arg(args, uword_t));
+
+    for (auto i = v.rbegin(); i != v.rend(); ++i)
+        push(regs, *i, write_mem);
 }
 
 //===----------------------------------------------------------------------===//
@@ -312,51 +368,64 @@ void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem
 //===----------------------------------------------------------------------===//
 #elif defined(__i386__)
 
-uword_t read_retval(const uregs_t& regs)
+uword_t
+read_retval(const uregs_t& regs)
 {
     return regs.eax;
 }
 
-uword_t read_sp(const uregs_t& regs)
+uword_t
+read_sp(const uregs_t& regs)
 {
     return regs.esp;
 }
 
-uword_t read_pc(const uregs_t& regs)
+uword_t
+read_pc(const uregs_t& regs)
 {
     return regs.eip;
 }
 
-void push(uregs_t* regs, uword_t stack, writemem_t write_mem)
+void
+push(uregs_t* regs, uword_t stack, writemem_t write_mem)
 {
     regs->esp -= sizeof(uword_t);
     write_mem(reinterpret_cast<intptr_t>(&stack), read_sp(*regs), sizeof(uword_t));
 }
 
-void pop(uregs_t* regs)
+void
+pop(uregs_t* regs)
 {
     regs->esp -= sizeof(uword_t);
 }
 
-void write_pc(uregs_t* regs, intptr_t address)
+void
+write_pc(uregs_t* regs, intptr_t address)
 {
     regs->eip = address;
 }
 
-void write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
+void
+write_lr(uregs_t* regs, intptr_t address, writemem_t write_mem)
 {
     push(regs, address, write_mem);
 }
 
-void write_syscall(uregs_t* regs, int n)
+void
+write_syscall(uregs_t* regs, int n)
 {
     regs->eax = n;
 }
 
-void write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
+void
+write_param(uregs_t* regs, size_t nargs, va_list args, writemem_t write_mem)
 {
-    for (int i = 0; i < nargs; ++i)
-        push(regs, (uword_t)va_arg(args, uword_t), write_mem);
+    std::vector<uword_t> v;
+    for (size_t i = 0; i < nargs; ++i)
+        v.push_back((uword_t)va_arg(args, uword_t));
+
+    for (auto i = v.rbegin(); i != v.rend(); ++i)
+        push(regs, *i, write_mem);
 }
 
 #endif

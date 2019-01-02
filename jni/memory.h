@@ -24,13 +24,15 @@
 
 namespace memory {
 
-struct map {
+struct map
+{
     uintptr_t address;
     size_t size;
     std::string path;
 };
 
-void find_map(map* map, const std::string& path, pid_t pid)
+void
+find_map(map* map, const std::string& path, pid_t pid)
 {
     char line[256] = { 0 };
 
@@ -88,7 +90,8 @@ void find_map(map* map, const std::string& path, pid_t pid)
     fclose(fp);
 }
 
-void find_map(map* map, uintptr_t address, pid_t pid)
+void
+find_map(map* map, uintptr_t address, pid_t pid)
 {
     char line[256] = { 0 };
 
@@ -146,24 +149,27 @@ void find_map(map* map, uintptr_t address, pid_t pid)
     fclose(fp);
 }
 
-void find_remote_map(map* map, const std::string& path, pid_t pid)
+void
+find_remote_map(map* map, const std::string& path, pid_t pid)
 {
     find_map(map, path, pid);
 }
 
-void find_remote_map(map* map, uintptr_t address, pid_t pid)
+void
+find_remote_map(map* map, uintptr_t address, pid_t pid)
 {
     find_map(map, address, pid);
 }
 
-void find_local_map(map* map, const std::string& path)
+void
+find_local_map(map* map, const std::string& path)
 {
     find_map(map, path, 0);
 }
 
-void find_local_map(map* map, uintptr_t address)
+void
+find_local_map(map* map, uintptr_t address)
 {
     find_map(map, address, 0);
 }
-
 }
