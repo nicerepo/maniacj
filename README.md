@@ -14,3 +14,6 @@ This project is part of MANIAC, a modern dynamic binary instrumentation engine f
 
 ## Demo
 See the [`maniac_demo`](https://github.com/nicerepo/maniac_demo) repository for use with MANIAC.
+
+## Copying
+This is free software released under the GNU General Public License (GPLv3). See `LICENSE` for details.
